@@ -1,0 +1,32 @@
+# Visual Studio user/cache files
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+
+# Build outputs
+x64/
+x86/
+Debug/
+Release/
+bin/
+obj/
+*.obj
+*.pdb
+*.ilk
+*.idb
+*.tlog/
+*.lastbuildstate
+*.recipe
+*.log
+*.exe
+
+# Runtime export files
+patient_list.txt
+finance_report.txt
+
+# OS/editor noise
+Thumbs.db
+Desktop.ini
+.vscode/
