@@ -15,6 +15,10 @@
 #include "hospital_system.h"
 
 #define DATA_FILE_NAME "his_data.dat"
+#define DATA_FILE_MAGIC_V6 "HIS6.0"
+#define DATA_FILE_MAGIC_V7 "HIS7.0"
+
+static int g_data_file_version = 7;
 
  // 文件头结构体，用于校验平台兼容性
 typedef struct {
@@ -42,6 +46,7 @@ static int load_appointments(FILE* fp);
 static MedicalRecord* load_medical_records(FILE* fp);
 
 static void free_all_data(void);
+static int get_default_medicine_category(int medicine_id);
 
 /* ==================== 公有接口实现 ==================== */
 
@@ -50,7 +55,7 @@ int save_all_data(void) {
     if (fp == NULL) { return 0; }
 
     FileHeader header;
-    memcpy(header.magic, "HIS6.0", 6);
+    memcpy(header.magic, DATA_FILE_MAGIC_V7, 6);
     header.int_size = sizeof(int);
     header.float_size = sizeof(float);
     header.pointer_size = sizeof(void*);
@@ -82,7 +87,13 @@ int load_all_data(void) {
         return 0;
     }
 
-    if (strcmp(header.magic, "HIS6.0") != 0) {
+    if (memcmp(header.magic, DATA_FILE_MAGIC_V7, 6) == 0) {
+        g_data_file_version = 7;
+    }
+    else if (memcmp(header.magic, DATA_FILE_MAGIC_V6, 6) == 0) {
+        g_data_file_version = 6;
+    }
+    else {
         fclose(fp);
         return 0;
     }
@@ -105,6 +116,7 @@ int load_all_data(void) {
     if (!load_appointments(fp)) success = 0;
 
     fclose(fp);
+    g_data_file_version = 7;
     return success;
 }
 
@@ -156,6 +168,36 @@ static void free_all_data(void) {
         a = next;
     }
     g_appointment_head = NULL;
+}
+
+static int get_default_medicine_category(int medicine_id) {
+    switch (medicine_id) {
+    case 5001:
+    case 5002:
+    case 5003:
+    case 5008:
+    case 5009:
+    case 5015:
+    case 5020:
+        return 0;
+    case 5004:
+    case 5005:
+    case 5006:
+    case 5007:
+    case 5010:
+    case 5011:
+    case 5013:
+    case 5018:
+    case 5019:
+        return 1;
+    case 5012:
+    case 5014:
+    case 5016:
+    case 5017:
+        return 2;
+    default:
+        return 2;
+    }
 }
 
 /* ==================== 保存函数实现 ==================== */
@@ -249,6 +291,7 @@ static int save_medicines(FILE* fp) {
         fwrite(&m->stock, sizeof(int), 1, fp);
         fwrite(&m->price, sizeof(float), 1, fp);
         fwrite(&m->purchase_price, sizeof(float), 1, fp);
+        fwrite(&m->category, sizeof(int), 1, fp);
         fwrite(&m->total_sold, sizeof(int), 1, fp);
         m = m->next;
     }
@@ -417,6 +460,12 @@ static int load_medicines(FILE* fp) {
         fread(&m->stock, sizeof(int), 1, fp);
         fread(&m->price, sizeof(float), 1, fp);
         fread(&m->purchase_price, sizeof(float), 1, fp);
+        if (g_data_file_version >= 7) {
+            fread(&m->category, sizeof(int), 1, fp);
+        }
+        else {
+            m->category = get_default_medicine_category(m->id);
+        }
         fread(&m->total_sold, sizeof(int), 1, fp);
 
         m->next = NULL;
